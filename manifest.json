@@ -1,0 +1,11 @@
+{
+	"id": "advanced-tag-switcher",
+	"name": "Advanced Tag Switcher",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Suggest the proper notes which is according to multiple tags by user.",
+	"author": "Samuel Kang",
+	"authorUrl": "https://obsidian.md",
+	"fundingUrl": "https://obsidian.md/pricing",
+	"isDesktopOnly": false
+}

@@ -1,0 +1,24 @@
+/*
+
+This CSS file will be included with your plugin, and
+available in the app when your plugin is enabled.
+
+If your plugin does not need CSS, delete this file.
+
+*/
+
+.match__1 {
+	color: wheat;
+}
+.match__2 {
+	color: green;
+}
+.match__3 {
+	color: rgb(99, 99, 237);
+}
+.match__4 {
+	color: orange;
+}
+.match__5 {
+	color: rgb(225, 0, 0);
+}
