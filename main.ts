@@ -1,14 +1,15 @@
 import {
 	App,
-	Editor,
-	MarkdownView,
+	// Editor,
+	// MarkdownView,
+	getAllTags,
 	Notice,
 	Plugin,
 	SuggestModal,
 	TFile,
 } from "obsidian";
 
-var obsidian = require("obsidian");
+//const obsidian = require('obsidian');
 
 /**
  * 노트와 노트의 태그 묶음
@@ -119,21 +120,23 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		this.allFileAndTags = [];
 		const allFiles = this.app.vault.getMarkdownFiles();
 		allFiles.forEach((file) => {
-			const fileTags = obsidian.getAllTags(
-				this.app.metadataCache.getFileCache(file)
-			);
+			const fileCache = this.app.metadataCache.getFileCache(file);
+			if (fileCache) {
+				const fileTags = getAllTags(fileCache);
+				if (fileTags) {
+					// #을 떼고 ,로 구분해서 하나의 문자열로 만든다
+					let fileTags2 = "";
+					fileTags.forEach((t: string) => {
+						fileTags2 += t.slice(1).toLowerCase() + ",";
+					});
 
-			// #을 떼고 ,로 구분해서 하나의 문자열로 만든다
-			var fileTags2 = "";
-			fileTags.forEach((t: string) => {
-				fileTags2 += t.slice(1).toLowerCase() + ",";
-			});
-
-			this.allFileAndTags.push({
-				file: file,
-				tags: fileTags,
-				tag2: fileTags2,
-			});
+					this.allFileAndTags.push({
+						file: file,
+						tags: fileTags,
+						tag2: fileTags2,
+					});
+				}
+			}
 		});
 
 		// console.log("<allFileAndTags>");
@@ -176,7 +179,7 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		// tags.forEach((s) => console.log(s));
 
 		const tagCombination: string[][] = [];
-		for (var n = tags.length; n >= 1; n--) {
+		for (let n = tags.length; n >= 1; n--) {
 			tagCombination.push(...this.getCombinations(tags, n));
 		}
 
@@ -190,7 +193,7 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		// console.log("</tagCombi>");
 
 		// tagCombination 결과와 이 태그들과 매치되어질 파일들을 모두 저장되는 곳을 만든다.
-		var searchResult: SearchResult[] = [];
+		const searchResult: SearchResult[] = [];
 		tagCombi.forEach((s) => {
 			const sr = new SearchResult();
 			sr.tags = s;
@@ -203,8 +206,8 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		// 예를들어 3개의 태그가 있고 해당 파일의 태그가 이것을 모두 포함하면 매치가 된 것이다.
 		// 그러면 해당 파일의 이름을 searchResult에 저장해 두고 다음 파일로 넘어간다.
 		this.allFileAndTags.forEach((obj) => {
-			for (let sr of searchResult) {
-				var isMatch = true;
+			for (const sr of searchResult) {
+				let isMatch = true;
 
 				// sr.tags는 위에서 tag combination 구할 때 이미 설정되었다.
 				sr.tags.forEach((tag) => {
@@ -229,10 +232,10 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 	}
 
 	getSuggestions(query: string): SuggestInfo[] {
-		var result: SuggestInfo[] = [];
+		const result: SuggestInfo[] = [];
 		this.searchByTags(query).forEach((sr) => {
 			sr.files.forEach((file) => {
-				var fat = this.allFileAndTags.filter(
+				const fat = this.allFileAndTags.filter(
 					(v) => v.file.name === file.name
 				);
 				result.push({
@@ -256,7 +259,7 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		// console.log("renderSuggestion: value is " + value.file);
 		el.createEl("div", { text: value.file.name });
 
-		var match_count = value.count;
+		let match_count = value.count;
 		if (match_count < 1) match_count = 1;
 		if (match_count > 5) match_count = 5;
 
@@ -276,11 +279,11 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 	}
 
 	async openNote(file: TFile): Promise<void> {
-		const { vault } = this.app;
+		//const { vault } = this.app;
 
 		try {
 			// Create the file and open it in the active leaf
-			let leaf = this.app.workspace.getLeaf(true);
+			const leaf = this.app.workspace.getLeaf(true);
 			await leaf.openFile(file);
 		} catch (error) {
 			new Notice(error.toString());
