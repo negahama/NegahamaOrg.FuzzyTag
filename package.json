@@ -1,5 +1,5 @@
 {
-	"name": "advanced-tag-switcher-plugin",
+	"name": "fuzzy-tag-switcher-plugin",
 	"version": "1.0.0",
 	"description": "This is a plugin to suggest the proper notes which is according to multiple tags",
 	"main": "main.js",

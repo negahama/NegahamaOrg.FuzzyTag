@@ -1,6 +1,6 @@
 {
-	"id": "advanced-tag-switcher",
-	"name": "Advanced Tag Switcher",
+	"id": "fuzzy-tag-switcher",
+	"name": "Fuzzy Tag Switcher",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Suggest the proper notes which is according to multiple tags by user.",
