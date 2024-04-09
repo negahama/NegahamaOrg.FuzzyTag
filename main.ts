@@ -11,8 +11,8 @@ import {
 
 //const obsidian = require('obsidian');
 
-/**
- * 노트와 노트의 태그 묶음
+/** 노트와 노트의 태그 묶음
+ *
  * tag2는 여러 개의 태그들이 하나의 문자열로 되어져 있음. #이 제거되어 있고 구분자는 , 이다
  * 나중에 태그들로 노트를 찾을 때 태그가 배열보다는 문자열로 되어져 있는게 편하고 표시할 때도 낫다.
  */
@@ -22,8 +22,8 @@ class FileAndTags {
 	tag2: string;
 }
 
-/**
- * 검색의 결과가 저장되는 곳이다.
+/** 검색의 결과가 저장되는 곳이다.
+ *
  * 찾고자 하는 여러 개의 태그들의 조합들이 tags가 되고 그 조합을 만족하는 노트들의 리스트가 files가 된다
  */
 class SearchResult {
@@ -31,9 +31,9 @@ class SearchResult {
 	files: TFile[];
 }
 
-/**
- * 검색의 결과가 저장되는 곳이다.
- * 찾고자 하는 여러 개의 태그들의 조합들이 tags가 되고 그 조합을 만족하는 노트들의 리스트가 files가 된다
+/** 파일 하나에 대해 TFile과 그 파일이 원래 가지고 있는 tag들, 그리고 매치되는 태그 개수를 가지는 구조이다.
+ *
+ * 이것은 노트를 suggestion 하기 위해 필요한 정보이다.
  */
 class SuggestInfo {
 	file: TFile;
@@ -51,12 +51,15 @@ const instructions = [
 	{ command: "esc", purpose: "to dismiss" },
 ];
 
+/**
+ *
+ */
 export default class TagSwitcherPlugin extends Plugin {
 	async onload() {
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon(
 			"lucide-dollar-sign",
-			"Advanced Tag Switcher",
+			"Fuzzy Tag Switcher",
 			(evt: MouseEvent) => {
 				// Called when the user clicks the icon.
 				new TagSwitcher(this.app).open();
@@ -82,6 +85,9 @@ export default class TagSwitcherPlugin extends Plugin {
 	onunload() {}
 }
 
+/**
+ *
+ */
 class TagSwitcher extends SuggestModal<SuggestInfo> {
 	inputListener: EventListener;
 
@@ -116,6 +122,12 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 
 	allFileAndTags: FileAndTags[] = [];
 
+	/** vault에 있는 모든 파일들의 모든 tag를 allFileAndTags에 저장한다
+	 *
+	 * tag 정보는 meta data이며 app.metadataCache에 저장되어져 있다.
+	 * metadataCache.getFileCache(TFile)로 먼저 CachedMetadata를 구하고 여기서 tag들을 추출한다.
+	 * 추출된 tag들은 #을 떼고 ,로 구분해서 하나의 문자열로 만든 후 allFileAndTags.tag2에 저장한다.
+	 */
 	setupAllFileAndTags() {
 		this.allFileAndTags = [];
 		const allFiles = this.app.vault.getMarkdownFiles();
@@ -146,6 +158,21 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		// console.log("</allFileAndTags>");
 	}
 
+	/** 이 함수는 순열 arr C num 을 구하는 함수이다.
+	 * 정확히는 arr에 있는 값들 중에서 num개를 고르는 모든 경우를 리턴한다. 이때 고르는 순서는 상관없다.
+	 * 예를들어 getCombinations(['a', 'b', 'c', 'd'], 3)은
+	 * [
+	 *   [ 'a', 'b', 'c' ],
+	 *   [ 'a', 'b', 'd' ],
+	 *   [ 'a', 'c', 'd' ],
+	 *   [ 'b', 'c', 'd' ]
+	 * ]
+	 * 을 리턴한다.
+	 *
+	 * @param arr
+	 * @param num
+	 * @returns
+	 */
 	getCombinations = (arr: string[], num: number) => {
 		const results: string[][] = [];
 
@@ -170,6 +197,11 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		return results;
 	};
 
+	/** tag_string의 다수 태그들로부터 조합가능한 모든 경우를 생성한다.
+	 *
+	 * @param tag_string 공백으로 구분되어진 다수의 태그들이 저장된 문자열
+	 * @returns
+	 */
 	createTagCombination(tag_string: string) {
 		// const arry = [...tag_string.matchAll(/\b[ㄱ-ㅣ가-힣\w-]+\b/g)];
 		const arry = [...tag_string.matchAll(/[가-힣\w-_]+/g)];
@@ -186,8 +218,25 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		return tagCombination;
 	}
 
-	searchByTags(search_tag: string) {
-		const tagCombi = this.createTagCombination(search_tag);
+	/** 모든 파일에 대해서 해당 파일의 태그를 가지고 tagCombination에서 생성한 순서(태그 개수가 많은 것이 먼저)대로 매치가 되는지 검사한다.
+	 *
+	 * 예를 들어 a, b, c 3개의 태그로 조합되는 모든 경우의 수는 다음과 같다
+	 * [
+	 * 	 [ 'a', 'b', 'c' ],
+	 *   [ 'a', 'b' ], [ 'a', 'c' ], [ 'b', 'c' ],
+	 *   [ 'a' ], [ 'b' ], [ 'c' ]
+	 * ]
+	 *
+	 * 파일 하나에 대해서 위에서부터 순서대로 태그를 모두 가지고 있는지를 검사한다.
+	 * 임의의 파일 f가 a, b 태그만 가지고 있다면 이 파일은 첫번째 [ 'a', 'b', 'c' ] 검사에서는
+	 * c 태그가 없기 때문에 매치되지 않아 sr.files에 추가되지 않지만 두번째 [ 'a', 'b' ] 검사에서는
+	 * 추가된다. 아울러 더이상 검사할 필요가 없으므로 바로 검사를 종료한다.
+	 *
+	 * @param query
+	 * @returns
+	 */
+	searchByTags(query: string) {
+		const tagCombi = this.createTagCombination(query);
 		// console.log("<tagCombi>");
 		// tagCombi.forEach((s) => console.log(s));
 		// console.log("</tagCombi>");
@@ -231,6 +280,13 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		return searchResult;
 	}
 
+	/** SuggestModal<T>의 추상 메서드.
+	 *
+	 * 다수 태그에 부합되는 노트들을 제안하기 위해서 searchByTags()을 수행하고 SuggestInfo에 필요한 정보를 구성한다.
+	 *
+	 * @param query
+	 * @returns
+	 */
 	getSuggestions(query: string): SuggestInfo[] {
 		const result: SuggestInfo[] = [];
 		this.searchByTags(query).forEach((sr) => {
@@ -255,6 +311,13 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		return result;
 	}
 
+	/** SuggestModal<T>의 추상 메서드.
+	 *
+	 * Suggestion 하나하나를 실제로 render하는 함수
+	 *
+	 * @param value
+	 * @param el
+	 */
 	renderSuggestion(value: SuggestInfo, el: HTMLElement): void {
 		// console.log("renderSuggestion: value is " + value.file);
 		el.createEl("div", { text: value.file.name });
@@ -269,6 +332,11 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		});
 	}
 
+	/**
+	 *
+	 * @param item
+	 * @param evt
+	 */
 	onChooseSuggestion(
 		item: SuggestInfo,
 		evt: MouseEvent | KeyboardEvent
@@ -278,6 +346,10 @@ class TagSwitcher extends SuggestModal<SuggestInfo> {
 		this.close();
 	}
 
+	/**
+	 *
+	 * @param file
+	 */
 	async openNote(file: TFile): Promise<void> {
 		//const { vault } = this.app;
 
